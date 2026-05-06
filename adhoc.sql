@@ -1,5 +1,5 @@
-SELECT * FROM dev_env.stg_flight_data LIMIT 10;
-ALTER DATABASE test_db REFRESH COLLATION VERSION;
+SELECT * FROM dev_env.stg_flight_data;
+
 
 
 CREATE VIEW dev_env.dm_flight_data AS
@@ -32,6 +32,7 @@ FROM (
 ) AS flattened_subquery;
 
 
+create view dev_env.dm_latest_flight_data AS
 WITH ranked_flights AS (
     SELECT 
       *,
@@ -41,3 +42,10 @@ WITH ranked_flights AS (
 SELECT * 
 FROM ranked_flights 
 WHERE rn = 1; 
+
+;
+
+select * from dev_env.dm_latest_flight_data
+;
+select count(*)
+from dm_flight_data
