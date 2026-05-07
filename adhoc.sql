@@ -47,5 +47,7 @@ WHERE rn = 1;
 
 select * from dev_env.dm_latest_flight_data
 ;
+
+-- 1543011
 select count(*)
 from dm_flight_data
