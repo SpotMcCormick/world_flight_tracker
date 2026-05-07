@@ -31,8 +31,8 @@ db_params = {
 with open(CREDENTIALS_FILE) as f:
     creds = json.load(f)
 
-CLIENT_ID = creds["client_id"]
-CLIENT_SECRET = creds["client_secret"]
+CLIENT_ID = creds["clientId"]
+CLIENT_SECRET = creds["clientSecret"]
 
 # --- Token Manager ---
 class TokenManager:
