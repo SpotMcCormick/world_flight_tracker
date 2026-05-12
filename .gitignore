@@ -1,4 +1,6 @@
 .env
 __pycache__/   
 .venv/
-credentials.jsonconnect_to_postgres.py
+credentials.json
+connect_to_postgres.py
+*logs/

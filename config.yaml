@@ -1,0 +1,4 @@
+api_get_endpoint: https://opensky-network.org/api/states/all
+api_post_endpoint: https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token
+s3_bucket: world-flight-tracker
+s3_key: flights/
