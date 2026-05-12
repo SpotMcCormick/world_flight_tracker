@@ -16,7 +16,7 @@ LOG_DIR = ROOT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 logging.basicConfig(
-    filename=LOG_DIR / "s3_upload.log",
+    filename=LOG_DIR / "s3_gold_upload.log",
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
@@ -39,20 +39,7 @@ conn_uri = f"postgresql://{db_params['user']}:{db_params['password']}@{db_params
 
 # query for previous complete hour
 QUERY = """
-    SELECT DISTINCT 
-        origin_country, 
-        time_position::DATE AS fly_date, 
-        EXTRACT(HOUR FROM time_position) AS fly_hour, 
-        COUNT(DISTINCT icao24) AS fly_count,
-        ROUND(AVG(velocity), 2) AS hourly_avg_velocity,
-        ROUND(AVG(baro_altitude), 2) AS hourly_avg_altitude
-    FROM dev_env.dm_flight_data
-    WHERE 1=1
-        AND time_position >= date_trunc('hour', NOW()) - INTERVAL '1 hour'
-        AND time_position < date_trunc('hour', NOW())
-        AND on_ground = FALSE
-    GROUP BY origin_country, DATE(time_position), EXTRACT(HOUR FROM time_position)
-    ORDER BY fly_hour, origin_country
+   select * from dev_env.dm_latest_flight_data
 """
 
 # aws config 
@@ -72,13 +59,12 @@ def query_postgres():
 
 def upload_to_s3(df):
     try:
-        s3_path = f"s3://{BUCKET}/{S3_KEY}"
+        s3_path = f"s3://{BUCKET}/{S3_KEY}lastest_gold/gold.parquet"
         df.write_parquet(
             s3_path,
             compression="snappy",
             storage_options={"region": "us-east-1"},
             use_pyarrow=True,
-            partition_by=["fly_date", "fly_hour"],
         )
         logging.info(f"SUCCESS - Uploaded to s3://world-flight-tracker/flights/")
     except Exception as e:
