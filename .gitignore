@@ -5,3 +5,4 @@ credentials.json
 connect_to_postgres.py
 etl/connect_to_databricks.py
 etl/logs
+adhoc.py
