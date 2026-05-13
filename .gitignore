@@ -3,4 +3,4 @@ __pycache__/
 .venv/
 credentials.json
 connect_to_postgres.py
-*logs/
+etl/connect_to_databricks.py

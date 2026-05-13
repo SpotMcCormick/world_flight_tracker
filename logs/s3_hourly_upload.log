@@ -1,0 +1,5 @@
+2026-05-12 20:41:39 | INFO | Query returned 94 rows
+2026-05-12 20:41:40 | INFO | SUCCESS - Uploaded to s3://world-flight-tracker/flights/
+2026-05-12 20:55:01 | INFO | Query returned 94 rows
+2026-05-12 20:55:01 | INFO | Found credentials in shared credentials file: ~/.aws/credentials
+2026-05-12 20:55:02 | INFO | SUCCESS - Uploaded to s3://world-flight-tracker/flights/2026/05/12/19/flights.parquet
