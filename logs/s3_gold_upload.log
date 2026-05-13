@@ -1,9 +1,0 @@
-2026-05-12 16:05:52 | INFO | Query returned 10993 rows
-2026-05-12 16:05:52 | ERROR | S3 UPLOAD ERROR - Empty path component in path world-flight-tracker/flights//lastest_gold/gold.parquet
-2026-05-12 16:08:02 | INFO | Query returned 10993 rows
-2026-05-12 16:08:03 | INFO | SUCCESS - Uploaded to s3://world-flight-tracker/flights/
-2026-05-12 20:39:57 | INFO | Query returned 6809 rows
-2026-05-12 20:39:59 | INFO | SUCCESS - Uploaded to s3://world-flight-tracker/flights/
-2026-05-12 20:57:35 | INFO | Query returned 6809 rows
-2026-05-12 20:57:35 | INFO | Found credentials in shared credentials file: ~/.aws/credentials
-2026-05-12 20:57:37 | INFO | SUCCESS - Uploaded to s3://world-flight-tracker/flights/lastest_gold/gold.parquet
