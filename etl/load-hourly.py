@@ -1,7 +1,8 @@
-import psycopg2
 import yaml
 import logging
 import os
+import boto3
+import tempfile
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pathlib import Path
@@ -55,7 +56,7 @@ QUERY = """
     ORDER BY fly_hour, origin_country
 """
 
-# aws config 
+# aws config
 BUCKET = config["s3_bucket"]
 S3_KEY = config["s3_key"]
 
@@ -72,18 +73,19 @@ def query_postgres():
 
 def upload_to_s3(df):
     try:
-        s3_path = f"s3://{BUCKET}/{S3_KEY}"
-        df.write_parquet(
-            s3_path,
-            compression="snappy",
-             storage_options={
-                "region": "us-east-1",
-                "endpoint_url": "https://s3.amazonaws.com"
-            },
-            use_pyarrow=True,
-            partition_by=["fly_date", "fly_hour"],
-        )
-        logging.info(f"SUCCESS - Uploaded to s3://world-flight-tracker/flights/")
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        df.write_parquet(tmp_path, compression="snappy")
+
+        data_hour = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+        s3_key = f"{S3_KEY}{data_hour.year}/{data_hour.month:02d}/{data_hour.day:02d}/{data_hour.hour:02d}/flights.parquet"
+
+        s3 = boto3.client("s3")
+        s3.upload_file(tmp_path, BUCKET, s3_key)
+
+        logging.info(f"SUCCESS - Uploaded to s3://{BUCKET}/{s3_key}")
+
     except Exception as e:
         logging.error(f"S3 UPLOAD ERROR - {e}")
 
