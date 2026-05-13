@@ -44,15 +44,16 @@ def fetch_analytics(country):
         connection = sql.connect(**db_params)
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT
-                fly_date,
-                SUM(fly_count) as flights,
-                ROUND(AVG(hourly_avg_altitude), 2) as avg_altitude,
-                ROUND(AVG(hourly_avg_velocity), 2) as avg_velocity
-            FROM workspace.default.flight_analytics
-            WHERE origin_country = %s
-            GROUP BY fly_date
-            ORDER BY fly_date DESC
+        SELECT
+        fly_date,
+        SUM(fly_count) as flights,
+        ROUND(AVG(hourly_avg_altitude), 2) as avg_altitude,
+        ROUND(AVG(hourly_avg_velocity), 2) as avg_velocity
+        FROM workspace.default.flight_analytics
+        WHERE origin_country = %s
+        AND fly_date BETWEEN current_date() - INTERVAL 7 DAYS AND current_date()
+        GROUP BY fly_date
+        ORDER BY fly_date DESC
         """, [country])
         result = cursor.fetchall()
         columns = [d[0] for d in cursor.description]
@@ -81,7 +82,7 @@ def main():
         with center_col:
             st.title("World Flight Tracker")
             countries = df["origin_country"].unique().sort().to_list()
-            choice = st.selectbox("Search countries:", [""] + countries)
+            choice = st.selectbox("Search countries of origin:", [""] + countries)
             if st.button("View Map", use_container_width=True) and choice != "":
                 st.session_state.selected_country = choice
                 st.rerun()
