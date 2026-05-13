@@ -63,7 +63,10 @@ def upload_to_s3(df):
         df.write_parquet(
             s3_path,
             compression="snappy",
-            storage_options={"region": "us-east-1"},
+             storage_options={
+                "region": "us-east-1",
+                "endpoint_url": "https://s3.amazonaws.com"
+            },
             use_pyarrow=True,
         )
         logging.info(f"SUCCESS - Uploaded to s3://world-flight-tracker/flights/")

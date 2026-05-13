@@ -77,11 +77,11 @@ ORDER BY fly_hour, origin_country
 
 ;
 -- 2026-05-08 13:34:27.272131-04
-select min(upload_dt)
+select min(uploaded_at)
 from dm_flight_data;
 
 
-select max(upload_dt) 
+select max(uploaded_at) 
 from dev_env.dm_flight_data;
 ;
 
