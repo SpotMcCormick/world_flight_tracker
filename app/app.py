@@ -50,7 +50,7 @@ def fetch_analytics(country):
                 ROUND(AVG(hourly_avg_altitude), 2) as avg_altitude,
                 ROUND(AVG(hourly_avg_velocity), 2) as avg_velocity
             FROM workspace.default.flight_analytics
-            WHERE origin_country = ?
+            WHERE origin_country = %s
             GROUP BY fly_date
             ORDER BY fly_date DESC
         """, [country])
