@@ -90,3 +90,7 @@ select * from dev_env.dm_latest_flight_data;
 
 ALTER TABLE stg_flight_data
 RENAME COLUMN upload_dt TO uploaded_at;   
+
+
+SELECT definition FROM pg_views WHERE schemaname = 'dev_env' AND viewname = 'dm_flight_data';   
+
