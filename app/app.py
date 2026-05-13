@@ -6,23 +6,17 @@ import io
 import datetime
 import os
 from databricks import sql
-from dotenv import load_dotenv
-from pathlib import Path
-
-# set up paths
-ROOT_DIR = Path(__file__).parents[1]
-load_dotenv(ROOT_DIR / ".env")
 
 # aws config
 BUCKET = "world-flight-tracker"
 S3_KEY = "flights/lastest_gold/gold.parquet"
 REFRESH_INTERVAL = 300
 
-#databricks config
+# databricks config
 db_params = {
-    "server_hostname": os.getenv("DATABRICKS_HOST"),
-    "http_path": os.getenv("DATABRICKS_HTTP"),
-    "access_token": os.getenv("DATABRICKS_TOKEN"),
+    "server_hostname": st.secrets["DATABRICKS_HOST"],
+    "http_path": st.secrets["DATABRICKS_HTTP"],
+    "access_token": st.secrets["DATABRICKS_TOKEN"],
 }
 
 st.set_page_config(page_title="World Flight Tracker", layout="wide")
@@ -31,7 +25,11 @@ st.set_page_config(page_title="World Flight Tracker", layout="wide")
 @st.cache_data(ttl=REFRESH_INTERVAL, show_spinner=False)
 def fetch_data_polars():
     try:
-        s3 = boto3.client("s3")
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
+        )
         obj = s3.get_object(Bucket=BUCKET, Key=S3_KEY)
         df = pl.read_parquet(io.BytesIO(obj["Body"].read()))
         return df.drop_nulls(subset=["latitude", "longitude", "origin_country"])
@@ -88,7 +86,7 @@ def main():
                 st.session_state.selected_country = choice
                 st.rerun()
 
-    #analytics and table
+    # analytics and map
     else:
         target = st.session_state.selected_country
 
