@@ -46,7 +46,7 @@ def fetch_analytics(country):
         cursor.execute("""
             SELECT
                 fly_date,
-                fly_hour,
+                ROUND(fly_hour,0),
                 fly_count as flights,
                 ROUND(hourly_avg_altitude, 2) as avg_altitude,
                 ROUND(hourly_avg_velocity, 2) as avg_velocity
