@@ -44,16 +44,16 @@ def fetch_analytics(country):
         connection = sql.connect(**db_params)
         cursor = connection.cursor()
         cursor.execute("""
-        SELECT
-        fly_date,
-        SUM(fly_count) as flights,
-        ROUND(AVG(hourly_avg_altitude), 2) as avg_altitude,
-        ROUND(AVG(hourly_avg_velocity), 2) as avg_velocity
-        FROM workspace.default.flight_analytics
-        WHERE origin_country = %s
-        AND fly_date BETWEEN current_date() - INTERVAL 7 DAYS AND current_date()
-        GROUP BY fly_date
-        ORDER BY fly_date DESC
+            SELECT
+                fly_date,
+                fly_hour,
+                fly_count as flights,
+                ROUND(hourly_avg_altitude, 2) as avg_altitude,
+                ROUND(hourly_avg_velocity, 2) as avg_velocity
+            FROM workspace.default.flight_analytics
+            WHERE origin_country = %s
+            AND fly_date = current_date()
+            ORDER BY fly_hour ASC
         """, [country])
         result = cursor.fetchall()
         columns = [d[0] for d in cursor.description]
@@ -109,10 +109,21 @@ def main():
         analytics_df = fetch_analytics(target)
 
         if not analytics_df.empty:
+            # grand total row
+            total_row = pd.DataFrame([{
+                "fly_date": "Total",
+                "fly_hour": "",
+                "flights": analytics_df["flights"].sum(),
+                "avg_altitude": round(analytics_df["avg_altitude"].mean(), 2),
+                "avg_velocity": round(analytics_df["avg_velocity"].mean(), 2)
+            }])
+            display_df = pd.concat([analytics_df, total_row], ignore_index=True)
+
             st.dataframe(
-                analytics_df,
+                display_df,
                 column_config={
-                    "fly_date": "Daily Date",
+                    "fly_date": "Date",
+                    "fly_hour": "Hour",
                     "flights": "Daily Flights",
                     "avg_altitude": "Daily Avg Altitude (m)",
                     "avg_velocity": "Daily Avg Velocity (m/s)"
