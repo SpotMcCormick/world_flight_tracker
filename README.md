@@ -14,7 +14,7 @@ A personal portfolio project demonstrating an end-to-end modern data engineering
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         DATA INGESTION (Home Server)                       │
+│                         DATA INGESTION (Home Server)                        │
 │                                                                             │
 │   OpenSky Network API  ──►  Python Ingestor  ──►  PostgreSQL (Bronze Layer) │
 │   REST API Polling           JSON Processing         Raw JSON Storage       │
@@ -24,7 +24,7 @@ A personal portfolio project demonstrating an end-to-end modern data engineering
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                        SILVER LAYER (PostgreSQL)                            │
 │                                                                             │
-│   Flatten JSON  ──►  Normalize & Clean  ──►  Structured Relational Tables  │
+│   Flatten JSON  ──►  Normalize & Clean  ──►  Structured Relational Tables   │
 │   Parse Fields         Type Casting             Data Mart Models            │
 └──────────────────────────────────┬──────────────────────────────────────────┘
                                    │
@@ -32,7 +32,7 @@ A personal portfolio project demonstrating an end-to-end modern data engineering
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          GOLD LAYER (Amazon S3)                             │
 │                                                                             │
-│   Parquet Export  ──►  S3 Bucket  ──►  Delta Lake (Databricks)             │
+│   Parquet Export  ──►  S3 Bucket  ──►  Delta Lake (Databricks)              │
 │   Every 5 Minutes       Cloud Storage        Analytical Views               │
 └──────────────────────────────────┬──────────────────────────────────────────┘
                                    │
@@ -40,7 +40,7 @@ A personal portfolio project demonstrating an end-to-end modern data engineering
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          APPLICATION LAYER                                  │
 │                                                                             │
-│   Databricks Delta Read  ──►  Streamlit App  ──►  Live Flight Map          │
+│   Databricks Delta Read  ──►  Streamlit App  ──►  Live Flight Map           │
 │   Incremental Refreshes        Analytical UI         Real-Time Visualization│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
