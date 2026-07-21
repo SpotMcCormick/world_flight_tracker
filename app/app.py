@@ -4,7 +4,6 @@ import pandas as pd
 import boto3
 import io
 import datetime
-import os
 from databricks import sql
 
 # aws config
@@ -30,9 +29,14 @@ def fetch_data_polars():
             aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
         )
+
         obj = s3.get_object(Bucket=BUCKET, Key=S3_KEY)
         df = pl.read_parquet(io.BytesIO(obj["Body"].read()))
-        return df.drop_nulls(subset=["latitude", "longitude", "origin_country"])
+
+        return df.drop_nulls(
+            subset=["latitude", "longitude", "origin_country"]
+        )
+
     except Exception as e:
         st.error(f"S3 Connection Error: {e}")
         return pl.DataFrame()
@@ -43,29 +47,37 @@ def fetch_analytics(country):
     try:
         connection = sql.connect(**db_params)
         cursor = connection.cursor()
-        cursor.execute("""
+
+        query = f"""
             SELECT
                 fly_date,
                 ROUND(fly_hour,0) AS fly_hour,
-                fly_count as flights,
-                ROUND(hourly_avg_altitude, 2) as avg_altitude,
-                ROUND(hourly_avg_velocity, 2) as avg_velocity
+                fly_count AS flights,
+                ROUND(hourly_avg_altitude, 2) AS avg_altitude,
+                ROUND(hourly_avg_velocity, 2) AS avg_velocity
             FROM workspace.default.flight_analytics
-            WHERE origin_country = %s
+            WHERE origin_country = '{country}'
             AND fly_date = current_date()
             ORDER BY fly_hour ASC
-        """, [country])
+        """
+
+        cursor.execute(query)
+
         result = cursor.fetchall()
         columns = [d[0] for d in cursor.description]
+
         cursor.close()
         connection.close()
+
         return pd.DataFrame(result, columns=columns)
+
     except Exception as e:
         st.error(f"Databricks Connection Error: {e}")
         return pd.DataFrame()
 
 
 def main():
+
     if "selected_country" not in st.session_state:
         st.session_state.selected_country = None
 
@@ -77,18 +89,25 @@ def main():
 
     # landing page
     if st.session_state.selected_country is None:
+
         _, center_col, _ = st.columns([1, 2, 1])
 
         with center_col:
             st.title("World Flight Tracker")
+
             countries = df["origin_country"].unique().sort().to_list()
-            choice = st.selectbox("Search countries of origin:", [""] + countries)
+
+            choice = st.selectbox(
+                "Search countries of origin:",
+                [""] + countries
+            )
+
             if st.button("View Map", use_container_width=True) and choice != "":
                 st.session_state.selected_country = choice
                 st.rerun()
 
-    # analytics and map
     else:
+
         target = st.session_state.selected_country
 
         filtered_df = (
@@ -109,15 +128,23 @@ def main():
         analytics_df = fetch_analytics(target)
 
         if not analytics_df.empty:
-            # grand total row
+
             total_row = pd.DataFrame([{
                 "fly_date": "Total",
                 "fly_hour": "",
                 "flights": analytics_df["flights"].sum(),
-                "avg_altitude": round(analytics_df["avg_altitude"].mean(), 2),
-                "avg_velocity": round(analytics_df["avg_velocity"].mean(), 2)
+                "avg_altitude": round(
+                    analytics_df["avg_altitude"].mean(), 2
+                ),
+                "avg_velocity": round(
+                    analytics_df["avg_velocity"].mean(), 2
+                )
             }])
-            display_df = pd.concat([analytics_df, total_row], ignore_index=True)
+
+            display_df = pd.concat(
+                [analytics_df, total_row],
+                ignore_index=True
+            )
 
             st.dataframe(
                 display_df,
@@ -131,23 +158,29 @@ def main():
                 hide_index=True,
                 use_container_width=True
             )
+
         else:
             st.info("No historical data available yet.")
 
         # map of live flights
         st.markdown("### Current Flight Locations")
+
         if not filtered_df.is_empty():
+
             st.map(
                 data=filtered_df.to_pandas(),
                 latitude="latitude",
                 longitude="longitude",
-                color='#0080ff',
+                color="#0080ff",
                 size=15
             )
+
         else:
             st.info(f"No active flights for {target}.")
 
-        st.caption(f"Sync: {datetime.datetime.now().strftime('%H:%M:%S')}")
+        st.caption(
+            f"Sync: {datetime.datetime.now().strftime('%H:%M:%S')}"
+        )
 
         @st.fragment(run_every=REFRESH_INTERVAL)
         def auto_sync():

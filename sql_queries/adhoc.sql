@@ -68,6 +68,7 @@ SELECT DISTINCT
     ROUND(AVG(velocity), 2) AS hourly_avg_velocity,
     ROUND(AVG(baro_altitude), 2) AS hourly_avg_altitude
 FROM dm_flight_data
+
 WHERE 1=1
     AND time_position >= date_trunc('hour', NOW()) - INTERVAL '1 hour'
     AND time_position < date_trunc('hour', NOW())
