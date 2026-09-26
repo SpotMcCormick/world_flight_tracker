@@ -1,0 +1,6 @@
+2026-09-25 22:24:10 | INFO | load-gold.py:<module>:54 | run 79e20f57-5d79-4f7e-986f-52b933412871 | Run ID: 79e20f57-5d79-4f7e-986f-52b933412871
+2026-09-25 22:24:11 | INFO | load-gold.py:query_clickhouse:73 | run 79e20f57-5d79-4f7e-986f-52b933412871 | Query returned 12811 rows
+2026-09-25 22:24:16 | INFO | load-gold.py:upload_to_s3:91 | run 79e20f57-5d79-4f7e-986f-52b933412871 | SUCCESS - Uploaded to s3://world-flight-tracker/flights/lastest_gold/gold.parquet
+2026-09-25 22:25:53 | INFO | load-gold.py:<module>:57 | run 792098aa-39bc-4511-b433-4aa14adfc3e4 | Run ID: 792098aa-39bc-4511-b433-4aa14adfc3e4
+2026-09-25 22:25:54 | INFO | load-gold.py:query_clickhouse:76 | run 792098aa-39bc-4511-b433-4aa14adfc3e4 | Query returned 12811 rows
+2026-09-25 22:25:57 | INFO | load-gold.py:upload_to_s3:94 | run 792098aa-39bc-4511-b433-4aa14adfc3e4 | SUCCESS - Uploaded to s3://world-flight-tracker/flights/lastest_gold/gold.parquet

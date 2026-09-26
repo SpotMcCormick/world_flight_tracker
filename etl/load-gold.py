@@ -3,44 +3,62 @@ import logging
 import os
 import boto3
 import tempfile
-from datetime import datetime, timedelta
+import clickhouse_connect
 from dotenv import load_dotenv
 from pathlib import Path
+from logging.handlers import TimedRotatingFileHandler
 import polars as pl
+
+from logging_config import ClickHouseLogHandler, build_email_handler, RunIdFilter, new_run_id
 
 # set up paths
 ROOT_DIR = Path(__file__).parents[1]
 load_dotenv(ROOT_DIR / ".env")
 
+# config yaml (loaded early, logging setup needs it)
+with open(ROOT_DIR / "config.yaml") as c:
+    config = yaml.safe_load(c)
+
+# ClickHouse Database
+clickhouse_params = {
+    "host": os.getenv("CLICKHOUSE_HOST"),
+    "port": int(os.getenv("CLICKHOUSE_PORT")),
+    "database": os.getenv("CLICKHOUSE_DB"),
+    "username": os.getenv("CLICKHOUSE_USER"),
+    "password": os.getenv("CLICKHOUSE_PASSWORD")
+}
+
 # logs
 LOG_DIR = ROOT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
-logging.basicConfig(
-    filename=LOG_DIR / "s3_gold_upload.log",
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+RUN_ID = new_run_id()
+
+file_handler = TimedRotatingFileHandler(
+    LOG_DIR / "s3_gold_upload.log", when="midnight", backupCount=30
 )
 
-# config yaml
-with open(ROOT_DIR / "config.yaml") as c:
-    config = yaml.safe_load(c)
+for noisy_logger in ("boto3", "botocore", "urllib3", "s3transfer"):
+    logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
-# Postgres Database
-db_params = {
-    "database": os.getenv("POSTGRES_DB"),
-    "user": os.getenv("POSTGRES_USER"),
-    "password": os.getenv("POSTGRES_PASSWORD"),
-    "host": os.getenv("POSTGRES_HOST"),
-    "port": os.getenv("POSTGRES_PORT")
-}
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(filename)s:%(funcName)s:%(lineno)d | run %(run_id)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[file_handler]
+)
 
-conn_uri = f"postgresql://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}"
+logging.getLogger().addFilter(RunIdFilter(RUN_ID))
+logging.getLogger().addHandler(
+    ClickHouseLogHandler(clickhouse_params, table=config["log_table"])
+)
+logging.getLogger().addHandler(build_email_handler())
 
-# query for previous complete hour
+logging.info(f"Run ID: {RUN_ID}")
+
+# query for latest flight data
 QUERY = """
-   select * from dev_env.dm_latest_flight_data
+select * from dev_world_flight_tracker.mart_latest_flight
 """
 
 # aws config
@@ -48,9 +66,13 @@ BUCKET = config["s3_bucket"]
 S3_KEY = config["s3_key"]
 
 
-def query_postgres():
+def query_clickhouse():
     try:
-        df = pl.read_database_uri(query=QUERY, uri=conn_uri)
+        client = clickhouse_connect.get_client(**clickhouse_params)
+        result = client.query(QUERY)
+        df = pl.DataFrame(result.result_rows, schema=result.column_names, orient="row")
+        client.close()
+
         logging.info(f"Query returned {len(df)} rows")
         return df
     except Exception as e:
@@ -76,6 +98,9 @@ def upload_to_s3(df):
 
 
 if __name__ == "__main__":
-    df = query_postgres()
-    if df is not None:
-        upload_to_s3(df)
+    try:
+        df = query_clickhouse()
+        if df is not None:
+            upload_to_s3(df)
+    except Exception:
+        logging.critical("Gold upload pipeline crashed", exc_info=True)

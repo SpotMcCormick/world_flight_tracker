@@ -1,0 +1,3 @@
+2026-09-25 22:31:36 | INFO | load-hourly.py:<module>:59 | run e0576067-a9a5-447c-aed8-ac402970edbf | Run ID: e0576067-a9a5-447c-aed8-ac402970edbf
+2026-09-25 22:31:37 | INFO | load-hourly.py:query_clickhouse:90 | run e0576067-a9a5-447c-aed8-ac402970edbf | Query returned 0 rows
+2026-09-25 22:31:39 | INFO | load-hourly.py:upload_to_s3:110 | run e0576067-a9a5-447c-aed8-ac402970edbf | SUCCESS - Uploaded to s3://world-flight-tracker/flights/2026/09/25/21/flights.parquet

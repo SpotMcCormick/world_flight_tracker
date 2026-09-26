@@ -471,4 +471,23 @@ ARRAY JOIN JSONExtract(
 
 
 select * from dev_world_flight_tracker.log
-order by logged_at desc
+order by logged_at desc;
+
+
+select * from log order by logged_at desc;
+
+
+SELECT DISTINCT
+    origin_country,
+    toDate(time_position) AS fly_date,
+    toHour(time_position) AS fly_hour,
+    COUNT(DISTINCT icao24) AS fly_count,
+    ROUND(AVG(velocity), 2) AS hourly_avg_velocity,
+    ROUND(AVG(baro_altitude), 2) AS hourly_avg_altitude
+FROM dev_world_flight_tracker.mart_flight_data
+WHERE 1=1
+    AND time_position >= toStartOfHour(now()) - INTERVAL 1 HOUR
+    AND time_position < toStartOfHour(now())
+    AND on_ground = FALSE
+GROUP BY origin_country, toDate(time_position), toHour(time_position)
+ORDER BY fly_hour, origin_country;
