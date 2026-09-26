@@ -1,8 +1,8 @@
 .env
-__pycache__/   
+__pycache__/
 .venv/
 credentials.json
 connect_to_postgres.py
 etl/connect_to_databricks.py
-etl/logs/*
+logs/
 adhoc.py
