@@ -3,57 +3,76 @@ import logging
 import os
 import boto3
 import tempfile
+import clickhouse_connect
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pathlib import Path
+from logging.handlers import TimedRotatingFileHandler
 import polars as pl
+
+from logging_config import ClickHouseLogHandler, build_email_handler, RunIdFilter, new_run_id
 
 # set up paths
 ROOT_DIR = Path(__file__).parents[1]
 load_dotenv(ROOT_DIR / ".env")
 
+# config yaml (loaded early, logging setup needs it)
+with open(ROOT_DIR / "config.yaml") as c:
+    config = yaml.safe_load(c)
+
+# ClickHouse Database
+clickhouse_params = {
+    "host": os.getenv("CLICKHOUSE_HOST"),
+    "port": int(os.getenv("CLICKHOUSE_PORT")),
+    "database": os.getenv("CLICKHOUSE_DB"),
+    "username": os.getenv("CLICKHOUSE_USER"),
+    "password": os.getenv("CLICKHOUSE_PASSWORD")
+}
+
 # logs
 LOG_DIR = ROOT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
-logging.basicConfig(
-    filename=LOG_DIR / "s3_hourly_upload.log",
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+RUN_ID = new_run_id()
+
+file_handler = TimedRotatingFileHandler(
+    LOG_DIR / "s3_hourly_upload.log", when="midnight", backupCount=30
 )
 
-# config yaml
-with open(ROOT_DIR / "config.yaml") as c:
-    config = yaml.safe_load(c)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(filename)s:%(funcName)s:%(lineno)d | run %(run_id)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[file_handler]
+)
 
-# Postgres Database
-db_params = {
-    "database": os.getenv("POSTGRES_DB"),
-    "user": os.getenv("POSTGRES_USER"),
-    "password": os.getenv("POSTGRES_PASSWORD"),
-    "host": os.getenv("POSTGRES_HOST"),
-    "port": os.getenv("POSTGRES_PORT")
-}
+logging.getLogger().addFilter(RunIdFilter(RUN_ID))
+logging.getLogger().addHandler(
+    ClickHouseLogHandler(clickhouse_params, table=config["log_table"])
+)
+logging.getLogger().addHandler(build_email_handler())
 
-conn_uri = f"postgresql://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}"
+# quiet noisy third-party loggers (boto3 credential lookups, etc.)
+for noisy_logger in ("boto3", "botocore", "urllib3", "s3transfer"):
+    logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
+logging.info(f"Run ID: {RUN_ID}")
 
 # query for previous complete hour
 QUERY = """
-    SELECT DISTINCT 
-        origin_country, 
-        time_position::DATE AS fly_date, 
-        EXTRACT(HOUR FROM time_position) AS fly_hour, 
-        COUNT(DISTINCT icao24) AS fly_count,
-        ROUND(AVG(velocity), 2) AS hourly_avg_velocity,
-        ROUND(AVG(baro_altitude), 2) AS hourly_avg_altitude
-    FROM dev_env.dm_flight_data
-    WHERE 1=1
-        AND time_position >= date_trunc('hour', NOW()) - INTERVAL '1 hour'
-        AND time_position < date_trunc('hour', NOW())
-        AND on_ground = FALSE
-    GROUP BY origin_country, DATE(time_position), EXTRACT(HOUR FROM time_position)
-    ORDER BY fly_hour, origin_country
+SELECT
+    origin_country,
+    toDate(time_position) AS fly_date,
+    toHour(time_position) AS fly_hour,
+    COUNT(DISTINCT icao24) AS fly_count,
+    ROUND(AVG(velocity), 2) AS hourly_avg_velocity,
+    ROUND(AVG(baro_altitude), 2) AS hourly_avg_altitude
+FROM dev_world_flight_tracker.mart_flight_data
+WHERE time_position >= toStartOfHour(now()) - INTERVAL 1 HOUR
+    AND time_position < toStartOfHour(now())
+    AND on_ground = FALSE
+GROUP BY origin_country, fly_date, fly_hour
+ORDER BY fly_hour, origin_country
 """
 
 # aws config
@@ -61,9 +80,13 @@ BUCKET = config["s3_bucket"]
 S3_KEY = config["s3_key"]
 
 
-def query_postgres():
+def query_clickhouse():
     try:
-        df = pl.read_database_uri(query=QUERY, uri=conn_uri)
+        client = clickhouse_connect.get_client(**clickhouse_params)
+        result = client.query(QUERY)
+        df = pl.DataFrame(result.result_rows, schema=result.column_names, orient="row")
+        client.close()
+
         logging.info(f"Query returned {len(df)} rows")
         return df
     except Exception as e:
@@ -91,6 +114,9 @@ def upload_to_s3(df):
 
 
 if __name__ == "__main__":
-    df = query_postgres()
-    if df is not None:
-        upload_to_s3(df)
+    try:
+        df = query_clickhouse()
+        if df is not None:
+            upload_to_s3(df)
+    except Exception:
+        logging.critical("Hourly upload pipeline crashed", exc_info=True)
